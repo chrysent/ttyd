@@ -60,6 +60,17 @@ static bool check_host_origin(struct lws *wsi) {
   int len = lws_hdr_copy(wsi, buf, (int)sizeof(buf), WSI_TOKEN_ORIGIN);
   if (len <= 0) return false;
 
+  // VULN-15 (security audit): when an explicit origin allowlist is
+  // configured, compare the browser-sent Origin against it. The legacy
+  // Origin-vs-Host comparison cannot defend against DNS rebinding, where
+  // both headers legitimately carry the attacker's own name.
+  if (server->allowed_origin_count > 0) {
+    for (int i = 0; i < server->allowed_origin_count; i++) {
+      if (strcasecmp(buf, server->allowed_origins[i]) == 0) return true;
+    }
+    return false;
+  }
+
   char host_buf[256];
   memset(host_buf, 0, sizeof(host_buf));
   len = lws_hdr_copy(wsi, host_buf, (int)sizeof(host_buf), WSI_TOKEN_HOST);

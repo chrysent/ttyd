@@ -91,7 +91,9 @@ Cross platform: macOS, Linux, FreeBSD/OpenBSD, OpenWrt/LEDE, Windows
 
 .PP
 -O, --check-origin
-      Do not allow websocket connection from different origin
+      Do not allow websocket connection from different origin. Pass an explicit origin
+      list (e.g. --check-origin=https://term.example.com[,https://host:port]) to also
+      protect against DNS rebinding; the default Origin-vs-Host comparison alone does not.
 
 .PP
 -m, --max-clients

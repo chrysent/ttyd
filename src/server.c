@@ -76,7 +76,7 @@ static const struct option options[] = {{"port", required_argument, NULL, 'p'},
                                         {"writable", no_argument, NULL, 'W'},
                                         {"terminal-type", required_argument, NULL, 'T'},
                                         {"client-option", required_argument, NULL, 't'},
-                                        {"check-origin", no_argument, NULL, 'O'},
+                                        {"check-origin", optional_argument, NULL, 'O'},
                                         {"max-clients", required_argument, NULL, 'm'},
                                         {"once", no_argument, NULL, 'o'},
                                         {"exit-no-conn", no_argument, NULL, 'q'},
@@ -85,7 +85,7 @@ static const struct option options[] = {{"port", required_argument, NULL, 'p'},
                                         {"version", no_argument, NULL, 'v'},
                                         {"help", no_argument, NULL, 'h'},
                                         {NULL, 0, 0, 0}};
-static const char *opt_string = "p:i:U:c:H:u:g:s:w:I:b:P:f:6aSC:K:A:Wt:T:Om:oqBd:vh";
+static const char *opt_string = "p:i:U:c:H:u:g:s:w:I:b:P:f:6aSC:K:A:Wt:T:O::m:oqBd:vh";
 
 static void print_help() {
   // clang-format off
@@ -109,6 +109,9 @@ static void print_help() {
           "    -t, --client-option     Send option to client (format: key=value), repeat to add more options\n"
           "    -T, --terminal-type     Terminal type to report, default: xterm-256color\n"
           "    -O, --check-origin      Do not allow websocket connection from different origin\n"
+          "                             Note: comparing Origin with the Host header does not defend against\n"
+          "                             DNS rebinding; pass an explicit origin list to be safe (comma separated,\n"
+          "                             e.g. --check-origin=https://term.example.com[,https://host:port])\n"
           "    -m, --max-clients       Maximum clients to support (default: 0, no limit)\n"
           "    -o, --once              Accept only one client and exit on disconnection\n"
           "    -q, --exit-no-conn      Exit on all clients disconnection\n"
@@ -153,7 +156,11 @@ static void print_config() {
     lwsl_notice("  websocket: %s\n", endpoints.ws);
   }
   if (server->auth_header != NULL) lwsl_notice("  auth header: %s\n", server->auth_header);
-  if (server->check_origin) lwsl_notice("  check origin: true\n");
+  if (server->check_origin) {
+    lwsl_notice("  check origin: true\n");
+    for (int i = 0; i < server->allowed_origin_count; i++)
+      lwsl_notice("  allow origin: %s\n", server->allowed_origins[i]);
+  }
   if (server->url_arg) lwsl_notice("  allow url arg: true\n");
   if (server->max_clients > 0) lwsl_notice("  max clients: %d\n", server->max_clients);
   if (server->once) lwsl_notice("  once: true\n");
@@ -212,6 +219,8 @@ static void server_free(struct server *ts) {
   if (ts->auth_header != NULL) free(ts->auth_header);
   if (ts->index != NULL) free(ts->index);
   if (ts->cwd != NULL) free(ts->cwd);
+  for (int i = 0; i < ts->allowed_origin_count; i++) free(ts->allowed_origins[i]);
+  if (ts->allowed_origins != NULL) free(ts->allowed_origins);
   free(ts->command);
   free(ts->prefs_json);
 
@@ -368,6 +377,24 @@ int main(int argc, char **argv) {
         break;
       case 'O':
         server->check_origin = true;
+        // VULN-15 (security audit): the legacy Origin-vs-Host comparison is
+        // defeated by DNS rebinding (both headers carry the attacker's own
+        // name). An explicit allowlist compares the browser-sent Origin
+        // against operator-chosen values instead.
+        if (optarg != NULL && strlen(optarg) > 0) {
+          char *list = strdup(optarg);
+          char *cur = list;
+          char *tok;
+          while ((tok = strsep(&cur, ",")) != NULL) {
+            size_t tl = strlen(tok);
+            while (tl && tok[tl - 1] == '/') tok[--tl] = '\0';  // trim trailing /
+            if (tl == 0) continue;
+            server->allowed_origins =
+                xrealloc(server->allowed_origins, (server->allowed_origin_count + 1) * sizeof(char *));
+            server->allowed_origins[server->allowed_origin_count++] = strdup(tok);
+          }
+          free(list);
+        }
         break;
       case 'm':
         server->max_clients = parse_int("max-clients", optarg);

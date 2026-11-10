@@ -120,7 +120,7 @@ Found by the independent second-pass review. `LWS_CALLBACK_RECEIVE` with `len ==
 
 **Fix**: ignore zero-length receives (`if (len == 0) return 0;`) — an empty first fragment contributes nothing to the message; the command byte then comes from the next fragment.
 
-### VULN-15 — `--check-origin` defeated by DNS rebinding (Medium, config-required)
+### VULN-15 — `--check-origin` defeated by DNS rebinding (Medium, config-required) — FIXED
 
 Found by the independent second-pass review. `check_host_origin()` compares the attacker-influenceable `Origin` header against the client-supplied `Host` header. Under DNS rebinding the attacker's page *is* same-origin from the browser's perspective (attacker DNS resolves their domain to the victim's IP): the browser sends `Host: attacker.example:7681` and `Origin: http://attacker.example:7681` — equal — and the attacker's JS gets a live terminal channel. The first-pass analysis wrongly rejected this ("browser cannot control Host") by assuming Host is always the operator's name.
 
@@ -163,4 +163,5 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | VULN-2 | (this commit) | `-c` startup log shows "credential: configured" only |
 | VULN-3 | (this commit) | 200-char `-b` rejected ("too long, max 120 chars", exit 255); `/mounted` endpoints all correct |
 | VULN-4 | (pending) | ws probe: only exact endpoint path accepted |
+| VULN-15 | (this commit) | allowlisted origins accepted (raw ws + real browser); hostile/empty origins rejected |
 | VULN-5..13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |

@@ -76,6 +76,8 @@ struct server {
   bool url_arg;            // allow client to send cli arguments in URL
   bool writable;           // whether clients to write to the TTY
   bool check_origin;       // whether allow websocket connection from different origin
+  char **allowed_origins;   // VULN-15: explicit origin allowlist (--check-origin=...)
+  int allowed_origin_count;
   int max_clients;         // maximum clients to support
   bool once;               // whether accept only one client and exit on disconnection
   bool exit_no_conn;       // whether exit on all clients disconnection
