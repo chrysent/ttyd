@@ -19,8 +19,8 @@
 | VULN-7 | Low | local config | `snprintf` return value used as write length in initial messages (`lws_write` OOB read) | FIXED |
 | VULN-8 | Low | local config | `/token` response content-length uses `snprintf` return (truncation → mismatch) | FIXED |
 | VULN-9 | Low | local config | `-c` credential longer than the base64 buffer: unchecked `lws_b64_encode_string` → `strdup` of uninitialized stack | FIXED |
-| VULN-10 | Low | local config | `get_sig()` reads `sig_name + 3` out of bounds for short `-s` values | OPEN |
-| VULN-11 | Low | n/a (robustness) | `gethostname` result not terminated; `get_sig_name` negative index not guarded | OPEN |
+| VULN-10 | Low | local config | `get_sig()` reads `sig_name + 3` out of bounds for short `-s` values | FIXED |
+| VULN-11 | Low | n/a (robustness) | `get_sig_name` negative index not guarded | FIXED |
 | VULN-12 | Low | remote authed (correctness) | `pty_pause`/`pty_resume` never toggle `paused` flag: PAUSE command is a no-op, redundant `read_start` | OPEN |
 | VULN-13 | Low | remote (minor leak) | `pss->args` array itself leaked per closed connection (strings are freed) | OPEN |
 
@@ -90,13 +90,13 @@ Severity reflects worst-case impact × reachability under the threat model above
 
 **Fix**: check the return; error out.
 
-### VULN-10 — `get_sig()` out-of-bounds read (Low, local config) — OPEN
+### VULN-10 — `get_sig()` out-of-bounds read (Low, local config) — FIXED
 
 `strcasecmp(name, sig_name + 3)` is evaluated even when the argument is shorter than 3 bytes → OOB read.
 
 **Fix**: length-guard before the `+3` comparison.
 
-### VULN-11 — `get_sig_name` negative index unguarded (Low, robustness) — OPEN
+### VULN-11 — `get_sig_name` negative index unguarded (Low, robustness) — FIXED
 
 Hostname buffer may be unterminated per POSIX; `sys_signame[sig]` is indexed without a `sig >= 0` guard.
 
@@ -168,4 +168,5 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | VULN-7 | (this commit) | 5KB command: initial messages clamped to 4116 bytes total, no over-read |
 | VULN-8 | (this commit) | /token body and Content-Length consistent (13 bytes, 200) |
 | VULN-9 | (this commit) | 300-char credential rejected with a clear error; normal credential auth still works |
-| VULN-10..13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |
+| VULN-10, VULN-11 | (this commit) | signal forms KILL/SIGKILL/9/15 accepted; short invalid values rejected without OOB |
+| VULN-12, VULN-13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |

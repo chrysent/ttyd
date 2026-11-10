@@ -77,15 +77,21 @@ bool endswith(const char *str, const char *suffix) {
 }
 
 int get_sig_name(int sig, char *buf, size_t len) {
-  int n = snprintf(buf, len, "SIG%s", sig < NSIG ? sys_signame[sig] : "unknown");
+  // VULN-11 (security audit): guard the array index against negative values
+  int n = snprintf(buf, len, "SIG%s", sig >= 0 && sig < NSIG ? sys_signame[sig] : "unknown");
   uppercase(buf);
   return n;
 }
 
 int get_sig(const char *sig_name) {
+  // VULN-10 (security audit): only compare past a "SIG" prefix when the
+  // argument is long enough to have one; sig_name + 3 read out of bounds
+  // for shorter strings.
+  size_t len = strlen(sig_name);
+  bool prefixed = len > 3;
   for (int sig = 1; sig < NSIG; sig++) {
     const char *name = sys_signame[sig];
-    if (name != NULL && (strcasecmp(name, sig_name) == 0 || strcasecmp(name, sig_name + 3) == 0))
+    if (name != NULL && (strcasecmp(name, sig_name) == 0 || (prefixed && strcasecmp(name, sig_name + 3) == 0)))
       return sig;
   }
   return atoi(sig_name);
