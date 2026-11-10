@@ -56,8 +56,17 @@ static json_object *parse_window_size(const char *buf, size_t len, uint16_t *col
   json_object *obj = json_tokener_parse_ex(tok, buf, len);
   struct json_object *o = NULL;
 
-  if (json_object_object_get_ex(obj, "columns", &o)) *cols = (uint16_t)json_object_get_int(o);
-  if (json_object_object_get_ex(obj, "rows", &o)) *rows = (uint16_t)json_object_get_int(o);
+  // VULN-18 (security audit): reject absurd sizes instead of truncating
+  // them into the uint16_t fields (65536 -> 0, -1 -> 65535); leave the
+  // previous values untouched when the request is out of range.
+  if (json_object_object_get_ex(obj, "columns", &o)) {
+    int c = json_object_get_int(o);
+    if (c > 0 && c <= 500) *cols = (uint16_t)c;
+  }
+  if (json_object_object_get_ex(obj, "rows", &o)) {
+    int r = json_object_get_int(o);
+    if (r > 0 && r <= 500) *rows = (uint16_t)r;
+  }
 
   json_tokener_free(tok);
   return obj;
@@ -434,6 +443,12 @@ int callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, 
       if (pss->pty_buf != NULL) pty_buf_free(pss->pty_buf);
       for (int i = 0; i < pss->argc; i++) {
         free(pss->args[i]);
+      }
+      // VULN-13 (security audit): the args array itself was never freed
+      if (pss->args != NULL) {
+        free(pss->args);
+        pss->args = NULL;
+        pss->argc = 0;
       }
 
       if (pss->process != NULL) {

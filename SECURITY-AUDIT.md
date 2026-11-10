@@ -22,7 +22,7 @@
 | VULN-10 | Low | local config | `get_sig()` reads `sig_name + 3` out of bounds for short `-s` values | FIXED |
 | VULN-11 | Low | n/a (robustness) | `get_sig_name` negative index not guarded | FIXED |
 | VULN-12 | Low | remote authed (correctness) | `pty_pause`/`pty_resume` never toggle `paused` flag: PAUSE command is a no-op, redundant `read_start` | FIXED |
-| VULN-13 | Low | remote (minor leak) | `pss->args` array itself leaked per closed connection (strings are freed) | OPEN |
+| VULN-13 | Low | remote (minor leak) | `pss->args` array itself leaked per closed connection (strings are freed) | FIXED |
 
 Severity reflects worst-case impact × reachability under the threat model above. "local config" means the trigger is operator-controlled input (command line); these are memory-safety defects reachable through misconfiguration and are fixed as defense-in-depth.
 
@@ -108,7 +108,7 @@ Hostname buffer may be unterminated per POSIX; `sys_signame[sig]` is indexed wit
 
 **Fix**: maintain the flag consistently: set after `uv_read_stop`, clear after `uv_read_start`, set in `read_cb`'s self-stop.
 
-### VULN-13 — `pss->args` array leak (Low, remote) — OPEN
+### VULN-13 — `pss->args` array leak (Low, remote) — FIXED
 
 `LWS_CALLBACK_CLOSED` frees `pss->args[i]` strings but not the array itself. Bounded by header size limits (small per connection); fixed for hygiene.
 
@@ -138,7 +138,7 @@ Found by the independent second-pass review. `read_cb` early-returns on `n == UV
 
 **Fix**: free `buf->base` before returning; deliver EOF on `n == 0` as well.
 
-### VULN-18 — Client window-size truncation; RESIZE ungated in readonly mode (Low, remote authed)
+### VULN-18 — Client window-size truncation; RESIZE ungated in readonly mode (Low, remote authed) — FIXED
 
 Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)` wraps (`65536 → 0`, `-1 → 65535`), and the RESIZE command is honored even without `-W`. Values land in the client's own PTY (`TIOCSWINSZ`), so impact is session-local (child program sees absurd sizes; zero falls back to 80×24 at spawn).
 
@@ -171,4 +171,4 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | VULN-10, VULN-11 | (this commit) | signal forms KILL/SIGKILL/9/15 accepted; short invalid values rejected without OOB |
 | VULN-12, VULN-17 | (this commit) | streaming works; PAUSE stalls output (0 bytes); RESUME flushes backlog with the queued data |
 | VULN-16 | (this commit) | build clean; spawn/stream/pause/resume probe still PASS |
-| VULN-13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |
+| VULN-13, VULN-18 | (this commit) | streaming/pause/resume probe PASS (resize still effective, absurd sizes ignored) | build + existing functional tests (origin check, auth flow, e2e) |
