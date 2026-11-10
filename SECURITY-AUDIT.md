@@ -11,7 +11,7 @@
 | ID | Severity | Reachability | Title | Status |
 |----|----------|--------------|-------|--------|
 | VULN-1 | High | remote, unauthenticated | Unbounded websocket message accumulation → memory-exhaustion DoS | FIXED |
-| VULN-2 | Medium | local (logs) | Basic-auth credential (equivalent to plaintext password) written to startup log | OPEN |
+| VULN-2 | Medium | local (logs) | Basic-auth credential (equivalent to plaintext password) written to startup log | FIXED |
 | VULN-3 | Medium | local config (stack corruption) | `-b/--base-path` overlong value: unterminated stack buffer + negative-size `strncpy` | OPEN |
 | VULN-4 | Low | remote (defense-in-depth) | WS endpoint path check accepts any prefix of `/ws` (`/`, `/w`) | OPEN |
 | VULN-5 | Low | remote (auth timing) | Credential compared with `strcmp` (not constant-time) in HTTP and WS auth | OPEN |
@@ -36,7 +36,7 @@ Severity reflects worst-case impact × reachability under the threat model above
 
 **Fix**: cap accumulated message length (`MAX_MESSAGE_LEN`, 16 KiB is far above any legitimate INPUT/RESIZE/JSON_DATA message — the initial JSON auth message is a few hundred bytes at most); free the buffer and close the connection with `LWS_CLOSE_STATUS_MESSAGE_TOO_BIG` when exceeded.
 
-### VULN-2 — Credential in startup log (Medium, local) — OPEN
+### VULN-2 — Credential in startup log (Medium, local) — FIXED
 
 `print_config()` (server.c) prints `credential: <base64(user:password)>` at notice level. Base64 is not a hash: **PoC (confirmed)**: log line `credential: YWxpY2U6czNjcmV0LVBX` decodes to `alice:s3cret-PW`. The password is recoverable from systemd journals, docker logs, or console scrollback.
 
@@ -160,7 +160,7 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | ID | Commit | Verification |
 |----|--------|--------------|
 | VULN-1 | (this commit) | fragment flood PoC: 32.8 MB sent, RSS unchanged (9688 kB), connection closed 1009 |
-| VULN-2 | (pending) | `-c` startup log shows presence only; credential absent |
+| VULN-2 | (this commit) | `-c` startup log shows "credential: configured" only |
 | VULN-3 | (pending) | overlong `-b` rejected with error, no corrupted endpoints |
 | VULN-4 | (pending) | ws probe: only exact endpoint path accepted |
 | VULN-5..13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |

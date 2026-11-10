@@ -139,7 +139,9 @@ static void print_help() {
 
 static void print_config() {
   lwsl_notice("tty configuration:\n");
-  if (server->credential != NULL) lwsl_notice("  credential: %s\n", server->credential);
+  // VULN-2 (security audit): never log the credential value; it is base64 of
+  // user:password, i.e. equivalent to the plaintext password.
+  if (server->credential != NULL) lwsl_notice("  credential: configured\n");
   lwsl_notice("  start command: %s\n", server->command);
   lwsl_notice("  close signal: %s (%d)\n", server->sig_name, server->sig_code);
   lwsl_notice("  terminal type: %s\n", server->terminal_type);
