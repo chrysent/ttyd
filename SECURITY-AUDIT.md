@@ -159,16 +159,16 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 
 | ID | Commit | Verification |
 |----|--------|--------------|
-| VULN-1 | (this commit) | fragment flood PoC: 32.8 MB sent, RSS unchanged (9688 kB), connection closed 1009 |
-| VULN-2 | (this commit) | `-c` startup log shows "credential: configured" only |
-| VULN-3 | (this commit) | 200-char `-b` rejected ("too long, max 120 chars", exit 255); `/mounted` endpoints all correct |
-| VULN-4 | (this commit) | ws probes: /ws and /ws?arg= accepted; /, /w, /wsfoo rejected |
-| VULN-15 | (this commit) | allowlisted origins accepted (raw ws + real browser); hostile/empty origins rejected |
-| VULN-5, VULN-6 | (this commit) | correct/wrong basic auth 200/401 via HTTP; ws token auth accepts valid, closes invalid; log shows "invalid AuthToken" without echoing it |
-| VULN-7 | (this commit) | 5KB command: initial messages clamped to 4116 bytes total, no over-read |
-| VULN-8 | (this commit) | /token body and Content-Length consistent (13 bytes, 200) |
-| VULN-9 | (this commit) | 300-char credential rejected with a clear error; normal credential auth still works |
-| VULN-10, VULN-11 | (this commit) | signal forms KILL/SIGKILL/9/15 accepted; short invalid values rejected without OOB |
-| VULN-12, VULN-17 | (this commit) | streaming works; PAUSE stalls output (0 bytes); RESUME flushes backlog with the queued data |
-| VULN-16 | (this commit) | build clean; spawn/stream/pause/resume probe still PASS |
-| VULN-13, VULN-18 | (this commit) | streaming/pause/resume probe PASS (resize still effective, absurd sizes ignored) | build + existing functional tests (origin check, auth flow, e2e) |
+| VULN-1 | 62f4dee | fragment flood PoC: 32.8 MB sent, RSS unchanged (9688 kB), connection closed 1009 |
+| VULN-2 | d14cd5b | `-c` startup log shows "credential: configured" only |
+| VULN-3 | 3457bb5 | 200-char `-b` rejected ("too long, max 120 chars", exit 255); `/mounted` endpoints all correct |
+| VULN-4 | ee0808f | ws probes: /ws and /ws?arg= accepted; /, /w, /wsfoo rejected |
+| VULN-15 | 43a4b36 | allowlisted origins accepted (raw ws + real browser); hostile/empty origins rejected |
+| VULN-5, VULN-6 | 20487ab | correct/wrong basic auth 200/401 via HTTP; ws token auth accepts valid, closes invalid; log shows "invalid AuthToken" without echoing it |
+| VULN-7 | 959ece5 | 5KB command: initial messages clamped to 4116 bytes total, no over-read |
+| VULN-8 | 52eb4b9 | /token body and Content-Length consistent (13 bytes, 200) |
+| VULN-9 | 780b507 | 300-char credential rejected with a clear error; normal credential auth still works |
+| VULN-10, VULN-11 | d357560 | signal forms KILL/SIGKILL/9/15 accepted; short invalid values rejected without OOB |
+| VULN-12, VULN-17 | 2e004a6 | streaming works; PAUSE stalls output (0 bytes); RESUME flushes backlog with the queued data |
+| VULN-16 | 212f8e4 | build clean; spawn/stream/pause/resume probe still PASS |
+| VULN-13, VULN-18 | 721531c | streaming/pause/resume probe PASS (resize still effective, absurd sizes ignored) | build + existing functional tests (origin check, auth flow, e2e) |
