@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <fcntl.h>
+#include <libwebsockets.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -42,6 +43,15 @@ void *xrealloc(void *p, size_t size) {
   p = realloc(p, size);
   if (!p) abort();
   return p;
+}
+
+// VULN-5 (security audit): compare presented credentials in constant time;
+// strcmp early-exits and leaks the matching prefix length through timing.
+bool credential_match(const char *presented, const char *credential) {
+  if (presented == NULL || credential == NULL) return false;
+  size_t plen = strlen(presented);
+  if (plen != strlen(credential)) return false;
+  return lws_timingsafe_bcmp(presented, credential, (uint32_t)plen) == 0;
 }
 
 char *uppercase(char *s) {

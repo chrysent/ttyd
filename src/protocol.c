@@ -221,7 +221,8 @@ static bool check_auth(struct lws *wsi, struct pss_tty *pss) {
   if (server->credential != NULL) {
     char buf[256];
     size_t n = lws_hdr_copy(wsi, buf, sizeof(buf), WSI_TOKEN_HTTP_AUTHORIZATION);
-    return n >= 7 && strstr(buf, "Basic ") && !strcmp(buf + 6, server->credential);
+    // VULN-5 (security audit): constant-time compare
+    return n >= 7 && strstr(buf, "Basic ") && credential_match(buf + 6, server->credential);
   }
 
   return true;
@@ -384,10 +385,12 @@ int callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, 
             struct json_object *o = NULL;
             if (json_object_object_get_ex(obj, "AuthToken", &o)) {
               const char *token = json_object_get_string(o);
-              if (token != NULL && !strcmp(token, server->credential))
+              // VULN-5 (security audit): constant-time compare
+              if (token != NULL && credential_match(token, server->credential))
                 pss->authenticated = true;
               else
-                lwsl_warn("WS authentication failed with token: %s\n", token);
+                // VULN-6 (security audit): never echo the token back into logs
+                lwsl_warn("WS authentication failed: invalid AuthToken\n");
             }
             if (!pss->authenticated) {
               json_object_put(obj);

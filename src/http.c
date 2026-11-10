@@ -35,7 +35,8 @@ static int check_auth(struct lws *wsi, struct pss_http *pss) {
     char buf[256];
     int len = lws_hdr_copy(wsi, buf, sizeof(buf), WSI_TOKEN_HTTP_AUTHORIZATION);
     if (len >= 7 && strstr(buf, "Basic ")) {
-      if (!strcmp(buf + 6, server->credential)) return AUTH_OK;
+      // VULN-5 (security audit): constant-time compare
+      if (credential_match(buf + 6, server->credential)) return AUTH_OK;
     }
     return send_unauthorized(wsi, HTTP_STATUS_UNAUTHORIZED, WSI_TOKEN_HTTP_WWW_AUTHENTICATE);
   }

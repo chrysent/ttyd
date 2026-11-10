@@ -10,6 +10,9 @@
 // malloc with NULL check
 void *xmalloc(size_t size);
 
+// VULN-5 (security audit): constant-time credential comparison
+bool credential_match(const char *presented, const char *credential);
+
 // realloc with NULL check
 void *xrealloc(void *p, size_t size);
 

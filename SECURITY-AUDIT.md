@@ -14,8 +14,8 @@
 | VULN-2 | Medium | local (logs) | Basic-auth credential (equivalent to plaintext password) written to startup log | FIXED |
 | VULN-3 | Medium | local config (stack corruption) | `-b/--base-path` overlong value: unterminated stack buffer + negative-size `strncpy` | FIXED |
 | VULN-4 | Low | remote (defense-in-depth) | WS endpoint path check accepts any prefix of `/ws` (`/`, `/w`) | OPEN |
-| VULN-5 | Low | remote (auth timing) | Credential compared with `strcmp` (not constant-time) in HTTP and WS auth | OPEN |
-| VULN-6 | Low | remote, unauthenticated | Failed WS auth logs the attacker-supplied token verbatim (log forging, log flooding) | OPEN |
+| VULN-5 | Low | remote (auth timing) | Credential compared with `strcmp` (not constant-time) in HTTP and WS auth | FIXED |
+| VULN-6 | Low | remote, unauthenticated | Failed WS auth logs the attacker-supplied token verbatim (log forging, log flooding) | FIXED |
 | VULN-7 | Low | local config | `snprintf` return value used as write length in initial messages (`lws_write` OOB read) | OPEN |
 | VULN-8 | Low | local config | `/token` response content-length uses `snprintf` return (truncation → mismatch) | OPEN |
 | VULN-9 | Low | local config | `-c` credential longer than the base64 buffer: unchecked `lws_b64_encode_string` → `strdup` of uninitialized stack | OPEN |
@@ -60,13 +60,13 @@ Severity reflects worst-case impact × reachability under the threat model above
 
 **Fix**: exact match (`strcmp`) against `endpoints.ws`.
 
-### VULN-5 — Timing-unsafe credential comparison (Low, remote) — OPEN
+### VULN-5 — Timing-unsafe credential comparison (Low, remote) — FIXED
 
 `http.c check_auth()` and `protocol.c` JSON token auth compare secrets with `strcmp`. A remote attacker measuring responses can in principle recover the credential byte-by-byte (practicality is network-dependent, but the fix is free).
 
 **Fix**: constant-time comparison of equalized-length values (manual `volatile` diff loop; compared length is independent of secret content).
 
-### VULN-6 — Attacker-controlled token in log (Low, remote unauth) — OPEN
+### VULN-6 — Attacker-controlled token in log (Low, remote unauth) — FIXED
 
 `WS authentication failed with token: %s` (protocol.c) prints the raw attacker-supplied JSON string: newlines in the token forge log lines (CWE-117) and unlimited attacker text floods logs.
 
@@ -164,4 +164,5 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | VULN-3 | (this commit) | 200-char `-b` rejected ("too long, max 120 chars", exit 255); `/mounted` endpoints all correct |
 | VULN-4 | (pending) | ws probe: only exact endpoint path accepted |
 | VULN-15 | (this commit) | allowlisted origins accepted (raw ws + real browser); hostile/empty origins rejected |
-| VULN-5..13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |
+| VULN-5, VULN-6 | (this commit) | correct/wrong basic auth 200/401 via HTTP; ws token auth accepts valid, closes invalid; log shows "invalid AuthToken" without echoing it |
+| VULN-7..13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |
