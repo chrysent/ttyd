@@ -126,7 +126,7 @@ Found by the independent second-pass review. `check_host_origin()` compares the 
 
 **Fix**: extend `-O/--check-origin` to optionally accept an explicit allowlist of origins (`--check-origin=https://trusted.example`); with a list, `Origin` is compared against the list instead of the `Host` header. Bare `-O` keeps the legacy behavior, and the help text now states that bare `-O` does not defend against DNS rebinding.
 
-### VULN-16 — `pty_spawn` failure path mishandles fd 0 and leaks (Low, remote under resource pressure)
+### VULN-16 — `pty_spawn` failure path mishandles fd 0 and leaks (Low, remote under resource pressure) — FIXED
 
 Found by the independent second-pass review. On `forkpty` failure `process->pty` is still 0 (memset in `process_init`), so `process_free()` runs `close(0)` — closing ttyd's stdin; later `open()`s can land on fd 0 and a subsequent failure closes a live socket/pty. The `pty_ctx_t` and `pty_process` also leak per failed spawn, and `uv_thread_join(&process->tid)` runs with `tid == 0`.
 
@@ -170,4 +170,5 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | VULN-9 | (this commit) | 300-char credential rejected with a clear error; normal credential auth still works |
 | VULN-10, VULN-11 | (this commit) | signal forms KILL/SIGKILL/9/15 accepted; short invalid values rejected without OOB |
 | VULN-12, VULN-17 | (this commit) | streaming works; PAUSE stalls output (0 bytes); RESUME flushes backlog with the queued data |
+| VULN-16 | (this commit) | build clean; spawn/stream/pause/resume probe still PASS |
 | VULN-13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |

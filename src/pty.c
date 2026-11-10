@@ -101,6 +101,11 @@ pty_process *process_init(void *ctx, uv_loop_t *loop, char *argv[], char *envp[]
   process->columns = 80;
   process->rows = 24;
   process->exit_code = -1;
+#ifndef _WIN32
+  // VULN-16 (security audit): on a failed spawn the pty fd is never
+  // assigned; 0 is a valid fd (stdin), so mark it invalid explicitly.
+  process->pty = -1;
+#endif
   return process;
 }
 
@@ -118,8 +123,9 @@ void process_free(pty_process *process) {
   if (process->pty != NULL) pClosePseudoConsole(process->pty);
   if (process->handle != NULL) CloseHandle(process->handle);
 #else
-  close(process->pty);
-  uv_thread_join(&process->tid);
+  // VULN-16 (security audit): only close/join what was actually set up
+  if (process->pty >= 0) close(process->pty);
+  if (process->tid) uv_thread_join(&process->tid);
 #endif
   if (process->in != NULL) uv_close((uv_handle_t *) process->in, close_cb);
   if (process->out != NULL) uv_close((uv_handle_t *) process->out, close_cb);

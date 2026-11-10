@@ -190,13 +190,17 @@ static char **build_env(struct pss_tty *pss) {
 }
 
 static bool spawn_process(struct pss_tty *pss, uint16_t columns, uint16_t rows) {
-  pty_process *process = process_init((void *)pty_ctx_init(pss), server->loop, build_args(pss), build_env(pss));
+  // VULN-16 (security audit): keep the ctx pointer so it can be freed if
+  // the spawn fails (the exit callback that normally owns it never runs).
+  pty_ctx_t *ctx = pty_ctx_init(pss);
+  pty_process *process = process_init(ctx, server->loop, build_args(pss), build_env(pss));
   if (server->cwd != NULL) process->cwd = strdup(server->cwd);
   if (columns > 0) process->columns = columns;
   if (rows > 0) process->rows = rows;
   if (pty_spawn(process, process_read_cb, process_exit_cb) != 0) {
     lwsl_err("pty_spawn: %d (%s)\n", errno, strerror(errno));
     process_free(process);
+    pty_ctx_free(ctx);
     return false;
   }
   lwsl_notice("started process, pid: %d\n", process->pid);
