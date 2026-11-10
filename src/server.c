@@ -448,14 +448,27 @@ int main(int argc, char **argv) {
         break;
       case 'b': {
         char path[128];
-        strncpy(path, optarg, 128);
+        // VULN-3 (security audit): the old code used strncpy(path, optarg,
+        // 128) without termination and computed 128 - len in the suffix
+        // copies, which underflows when len > 128. Copy with a bound, and
+        // reject base paths that cannot hold the longest suffix (/token).
+        snprintf(path, sizeof(path), "%s", optarg);
         size_t len = strlen(path);
         while (len && path[len - 1] == '/') path[--len] = 0;  // trim trailing /
         if (!len) break;
-#define sc(f)                                  \
-  strncpy(path + len, endpoints.f, 128 - len); \
-  endpoints.f = strdup(path);
-        sc(ws) sc(index) sc(token) sc(parent)
+        if (len > sizeof(path) - sizeof("/token") - 1) {
+          fprintf(stderr, "ttyd: base path too long (max %zu chars): %s\n", sizeof(path) - sizeof("/token") - 1, optarg);
+          return -1;
+        }
+#define sc(f)                                        \
+  do {                                                \
+    size_t bl_ = len, sl_ = strlen(endpoints.f);      \
+    if (bl_ + sl_ + 1 <= sizeof(path)) {              \
+      memcpy(path + bl_, endpoints.f, sl_ + 1);       \
+      endpoints.f = strdup(path);                     \
+    }                                                 \
+  } while (0)
+        sc(ws); sc(index); sc(token); sc(parent);
 #undef sc
       } break;
 #if LWS_LIBRARY_VERSION_NUMBER >= 4000000
