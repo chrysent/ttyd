@@ -16,6 +16,19 @@ on:
   workflow_call:
 
 jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake build-essential cmake curl file libtool python3
+      - name: Cross build x86_64 binary
+        run: env BUILD_TARGET=x86_64 ./scripts/cross-build.sh
+      - name: Run tests
+        run: python3 tests/ws_test.py build/ttyd
+
   msvc:
     runs-on: windows-latest
     env:
