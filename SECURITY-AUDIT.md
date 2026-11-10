@@ -21,7 +21,7 @@
 | VULN-9 | Low | local config | `-c` credential longer than the base64 buffer: unchecked `lws_b64_encode_string` → `strdup` of uninitialized stack | FIXED |
 | VULN-10 | Low | local config | `get_sig()` reads `sig_name + 3` out of bounds for short `-s` values | FIXED |
 | VULN-11 | Low | n/a (robustness) | `get_sig_name` negative index not guarded | FIXED |
-| VULN-12 | Low | remote authed (correctness) | `pty_pause`/`pty_resume` never toggle `paused` flag: PAUSE command is a no-op, redundant `read_start` | OPEN |
+| VULN-12 | Low | remote authed (correctness) | `pty_pause`/`pty_resume` never toggle `paused` flag: PAUSE command is a no-op, redundant `read_start` | FIXED |
 | VULN-13 | Low | remote (minor leak) | `pss->args` array itself leaked per closed connection (strings are freed) | OPEN |
 
 Severity reflects worst-case impact × reachability under the threat model above. "local config" means the trigger is operator-controlled input (command line); these are memory-safety defects reachable through misconfiguration and are fixed as defense-in-depth.
@@ -102,7 +102,7 @@ Hostname buffer may be unterminated per POSIX; `sys_signame[sig]` is indexed wit
 
 **Fix**: terminate buffer; guard index.
 
-### VULN-12 — `paused` flag never toggled (Low, correctness, remote authed) — OPEN
+### VULN-12 — `paused` flag never toggled (Low, correctness, remote authed) — FIXED
 
 `pty_pause()` returns early (flag stuck `true` since spawn) so the client PAUSE command never stops reads directly — it only works by accident because `read_cb` self-stops after each chunk; `pty_resume()` re-issues `uv_read_start` on already-active handles.
 
@@ -132,7 +132,7 @@ Found by the independent second-pass review. On `forkpty` failure `process->pty`
 
 **Fix**: initialize `pty = -1` (skip close when negative); free the ctx and process struct on the spawn-failure branch; guard the thread join.
 
-### VULN-17 — Read-buffer leak on EOF (`n == 0`) (Low, macOS/BSD)
+### VULN-17 — Read-buffer leak on spurious `n == 0` reads (Low, macOS/BSD) — FIXED
 
 Found by the independent second-pass review. `read_cb` early-returns on `n == UV_ENOBUFS || n == 0` without freeing `buf->base` allocated by `alloc_cb` (~64 KiB per session). On Linux the pty master returns EIO at EOF (non-leaking path); macOS/BSD return 0.
 
@@ -169,4 +169,5 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | VULN-8 | (this commit) | /token body and Content-Length consistent (13 bytes, 200) |
 | VULN-9 | (this commit) | 300-char credential rejected with a clear error; normal credential auth still works |
 | VULN-10, VULN-11 | (this commit) | signal forms KILL/SIGKILL/9/15 accepted; short invalid values rejected without OOB |
-| VULN-12, VULN-13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |
+| VULN-12, VULN-17 | (this commit) | streaming works; PAUSE stalls output (0 bytes); RESUME flushes backlog with the queued data |
+| VULN-13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |

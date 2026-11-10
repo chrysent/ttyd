@@ -65,8 +65,17 @@ void pty_buf_free(pty_buf_t *buf) {
 static void read_cb(uv_stream_t *stream, ssize_t n, const uv_buf_t *buf) {
   uv_read_stop(stream);
   pty_process *process = (pty_process *) stream->data;
+  // VULN-12 (security audit): reads are one-shot by design (restarted by
+  // pty_resume after the client flushes); keep the paused flag in sync
+  // with reality so pty_pause()/pty_resume() behave as documented.
+  process->paused = true;
   if (n <= 0) {
-    if (n == UV_ENOBUFS || n == 0) return;
+    // VULN-17 (security audit): free the buffer allocated by alloc_cb on
+    // the early-return paths (n == 0 happens at EOF on macOS/BSD).
+    if (n == UV_ENOBUFS || n == 0) {
+      free(buf->base);
+      return;
+    }
     process->read_cb(process, NULL, true);
     goto done;
   }
@@ -125,6 +134,7 @@ void pty_pause(pty_process *process) {
   if (process == NULL) return;
   if (process->paused) return;
   uv_read_stop((uv_stream_t *) process->out);
+  process->paused = true;
 }
 
 void pty_resume(pty_process *process) {
@@ -132,6 +142,7 @@ void pty_resume(pty_process *process) {
   if (!process->paused) return;
   process->out->data = process;
   uv_read_start((uv_stream_t *) process->out, alloc_cb, read_cb);
+  process->paused = false;
 }
 
 int pty_write(pty_process *process, pty_buf_t *buf) {
