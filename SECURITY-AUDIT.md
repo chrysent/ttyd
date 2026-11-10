@@ -155,6 +155,24 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 - **`uppercase`/`lowercase` returning the end-of-string pointer**: return values unused by callers (in-place mutation only); cosmetic.
 - **Windows-only helpers (`quote_arg`, `join_args` truncation, ConPTY pipe DACL)**: operator-config truncation on a path where argv is operator-supplied; named pipes are single-instance (`FILE_FLAG_FIRST_PIPE_INSTANCE`). Local, config-gated; noted, not fixed in this pass (win32 behavior unchanged by these fixes).
 
+## Upstream issues addressed (tsl0922/ttyd)
+
+Mapping of this audit's fixes to open issues in the upstream repository (checked 2026-11-10):
+
+| Upstream | Title | Status | Addressed by |
+|---|---|---|---|
+| #1546 | Zero-length WebSocket message causes ttyd crash / remote DoS | open (2026-06) | audit VULN-14 (62f4dee); also supersedes the approach in open PR #1574 |
+| #1563 | libwebsockets 5 breaks ttyd build | open (2026-08) | lws 5.1.0 port in the dependency-update commit (STUB/schannel/SRWLOCK/link-flag fixes) |
+| #1589 | run the uv loop directly for libwebsockets 5.1 | open (2026-10) | same root cause; fixed with an explicit `lws_service()` loop in `server.c` (alternative to the PR's approach), verified end to end |
+| #1566 | `--check-origin` can never pass over HTTP/2 (no Host header) | open (2026-08) | allowlist mode (VULN-15, 43a4b36) already sidesteps it; the legacy mode now falls back to the h2 `:authority` pseudo-header |
+
+Upstream issues examined and **not** addressed by this audit (candidates for follow-up):
+
+- #1444 (crash downloading large file via `sz`) and #1428 (sessions break printing large output with SSL): output/TLS framing path, outside the input-path findings fixed here.
+- #1575 / open PR #1576 (startup crash when the command ends in an option-like argument, e.g. `bash -i`): `calc_command_start()` argv-copy bug, not covered by this audit.
+- #1578 (`--credential` auth fails on the WS connection, Fedora): not reproduced here; possibly packaging/lws-version specific.
+- #1583 / open PR #1584 (mTLS rejects valid client certs with OpenSSL 4.1.0; callback should honor `preverify_ok`): relevant since the OpenSSL 4.1 bump; the audit did not cover the client-cert callback semantics.
+
 ## Fix tracking
 
 | ID | Commit | Verification |
@@ -162,7 +180,8 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | VULN-1 | 62f4dee | fragment flood PoC: 32.8 MB sent, RSS unchanged (9688 kB), connection closed 1009 |
 | VULN-2 | d14cd5b | `-c` startup log shows "credential: configured" only |
 | VULN-3 | 3457bb5 | 200-char `-b` rejected ("too long, max 120 chars", exit 255); `/mounted` endpoints all correct |
-| VULN-4 | ee0808f | ws probes: /ws and /ws?arg= accepted; /, /w, /wsfoo rejected |
+| VULN-4 | ee0808f |
+| upstream #1566 (h2 :authority fallback in legacy origin check) | (this commit) | legacy http/1.1 probes unchanged: same-origin accepted, mismatch/missing rejected | ws probes: /ws and /ws?arg= accepted; /, /w, /wsfoo rejected |
 | VULN-15 | 43a4b36 | allowlisted origins accepted (raw ws + real browser); hostile/empty origins rejected |
 | VULN-5, VULN-6 | 20487ab | correct/wrong basic auth 200/401 via HTTP; ws token auth accepts valid, closes invalid; log shows "invalid AuthToken" without echoing it |
 | VULN-7 | 959ece5 | 5KB command: initial messages clamped to 4116 bytes total, no over-read |

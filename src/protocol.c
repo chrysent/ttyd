@@ -92,6 +92,12 @@ static bool check_host_origin(struct lws *wsi) {
   char host_buf[256];
   memset(host_buf, 0, sizeof(host_buf));
   len = lws_hdr_copy(wsi, host_buf, (int)sizeof(host_buf), WSI_TOKEN_HOST);
+#if defined(LWS_ROLE_H2)
+  // Upstream issue tsl0922/ttyd#1566: HTTP/2 has no Host header (RFC 9113
+  // carries the authority in the :authority pseudo-header), so the check
+  // can never pass for ws-over-h2; fall back to :authority.
+  if (len <= 0) len = lws_hdr_copy(wsi, host_buf, (int)sizeof(host_buf), WSI_TOKEN_HTTP_COLON_AUTHORITY);
+#endif
 
 #if defined(LWS_LIBRARY_VERSION_NUMBER) && LWS_LIBRARY_VERSION_NUMBER >= 5000000
   /* lws >= 5: non-destructive parsing api, lws_parse_uri() is deprecated */
