@@ -116,7 +116,13 @@ int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user,
 
       if (strcmp(pss->path, endpoints.token) == 0) {
         const char *credential = server->credential != NULL ? server->credential : "";
-        size_t n = snprintf(buf, sizeof(buf), "{\"token\": \"%s\"}", credential);
+        // VULN-8 (security audit): clamp to the bytes actually written so
+        // Content-Length always matches the body (snprintf returns the
+        // length it would have written).
+        int m = snprintf(buf, sizeof(buf), "{\"token\": \"%s\"}", credential);
+        if (m < 0) return 1;
+        size_t n = (size_t)m;
+        if (n >= sizeof(buf)) n = sizeof(buf) - 1;
         if (lws_add_http_header_status(wsi, HTTP_STATUS_OK, &p, end) ||
             lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
                                          (unsigned char *)"application/json;charset=utf-8", 30, &p, end) ||
