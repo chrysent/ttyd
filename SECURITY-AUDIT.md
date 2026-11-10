@@ -18,7 +18,7 @@
 | VULN-6 | Low | remote, unauthenticated | Failed WS auth logs the attacker-supplied token verbatim (log forging, log flooding) | FIXED |
 | VULN-7 | Low | local config | `snprintf` return value used as write length in initial messages (`lws_write` OOB read) | FIXED |
 | VULN-8 | Low | local config | `/token` response content-length uses `snprintf` return (truncation → mismatch) | FIXED |
-| VULN-9 | Low | local config | `-c` credential longer than the base64 buffer: unchecked `lws_b64_encode_string` → `strdup` of uninitialized stack | OPEN |
+| VULN-9 | Low | local config | `-c` credential longer than the base64 buffer: unchecked `lws_b64_encode_string` → `strdup` of uninitialized stack | FIXED |
 | VULN-10 | Low | local config | `get_sig()` reads `sig_name + 3` out of bounds for short `-s` values | OPEN |
 | VULN-11 | Low | n/a (robustness) | `gethostname` result not terminated; `get_sig_name` negative index not guarded | OPEN |
 | VULN-12 | Low | remote authed (correctness) | `pty_pause`/`pty_resume` never toggle `paused` flag: PAUSE command is a no-op, redundant `read_start` | OPEN |
@@ -84,7 +84,7 @@ Severity reflects worst-case impact × reachability under the threat model above
 
 **Fix**: clamp to the number of bytes actually written.
 
-### VULN-9 — Unchecked base64 encode of `-c` credential (Low, local config) — OPEN
+### VULN-9 — Unchecked base64 encode of `-c` credential (Low, local config) — FIXED
 
 `lws_b64_encode_string(...)` return value is ignored; on failure (credential > ~190 chars) `strdup(b64_text)` copies uninitialized stack memory as the credential.
 
@@ -167,4 +167,5 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | VULN-5, VULN-6 | (this commit) | correct/wrong basic auth 200/401 via HTTP; ws token auth accepts valid, closes invalid; log shows "invalid AuthToken" without echoing it |
 | VULN-7 | (this commit) | 5KB command: initial messages clamped to 4116 bytes total, no over-read |
 | VULN-8 | (this commit) | /token body and Content-Length consistent (13 bytes, 200) |
-| VULN-9..13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |
+| VULN-9 | (this commit) | 300-char credential rejected with a clear error; normal credential auth still works |
+| VULN-10..13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |

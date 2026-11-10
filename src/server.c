@@ -428,8 +428,14 @@ int main(int argc, char **argv) {
           fprintf(stderr, "ttyd: invalid credential, format: username:password\n");
           return -1;
         }
+        // VULN-9 (security audit): on overflow the encode fails without
+        // terminating the buffer; check the result instead of strdup'ing
+        // uninitialized stack as the credential.
         char b64_text[256];
-        lws_b64_encode_string(optarg, strlen(optarg), b64_text, sizeof(b64_text));
+        if (lws_b64_encode_string(optarg, (int)strlen(optarg), b64_text, sizeof(b64_text)) < 0) {
+          fprintf(stderr, "ttyd: credential too long (max 189 chars)\n");
+          return -1;
+        }
         server->credential = strdup(b64_text);
         break;
       case 'H':
