@@ -23,6 +23,10 @@ const char *sys_signame[NSIG] = {
 
 #if defined(_WIN32) || defined(__CYGWIN__)
 #include <windows.h>
+// VULN-5 follow-up: libwebsockets.h pulls in windows.h first (often
+// lean-and-mean), which excludes shellapi.h; include it explicitly for
+// ShellExecute.
+#include <shellapi.h>
 #undef NSIG
 #define NSIG 33
 const char *sys_signame[NSIG] = {
