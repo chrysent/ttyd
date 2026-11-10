@@ -161,10 +161,10 @@ Mapping of this audit's fixes to open issues in the upstream repository (checked
 
 | Upstream | Title | Status | Addressed by |
 |---|---|---|---|
-| #1546 | Zero-length WebSocket message causes ttyd crash / remote DoS | open (2026-06) | audit VULN-14 (62f4dee); also supersedes the approach in open PR #1574 |
+| #1546 | Zero-length WebSocket message causes ttyd crash / remote DoS | open (2026-06) | audit VULN-14 (4167433); also supersedes the approach in open PR #1574 |
 | #1563 | libwebsockets 5 breaks ttyd build | open (2026-08) | lws 5.1.0 port in the dependency-update commit (STUB/schannel/SRWLOCK/link-flag fixes) |
 | #1589 | run the uv loop directly for libwebsockets 5.1 | open (2026-10) | same root cause; fixed with an explicit `lws_service()` loop in `server.c` (alternative to the PR's approach), verified end to end |
-| #1566 | `--check-origin` can never pass over HTTP/2 (no Host header) | open (2026-08) | allowlist mode (VULN-15, 43a4b36) already sidesteps it; the legacy mode now falls back to the h2 `:authority` pseudo-header |
+| #1566 | `--check-origin` can never pass over HTTP/2 (no Host header) | open (2026-08) | allowlist mode (VULN-15, 1c5731c) already sidesteps it; the legacy mode now falls back to the h2 `:authority` pseudo-header |
 
 Upstream issues examined and **not** addressed by this audit (candidates for follow-up):
 
@@ -177,17 +177,17 @@ Upstream issues examined and **not** addressed by this audit (candidates for fol
 
 | ID | Commit | Verification |
 |----|--------|--------------|
-| VULN-1 | 62f4dee | fragment flood PoC: 32.8 MB sent, RSS unchanged (9688 kB), connection closed 1009 |
-| VULN-2 | d14cd5b | `-c` startup log shows "credential: configured" only |
-| VULN-3 | 3457bb5 | 200-char `-b` rejected ("too long, max 120 chars", exit 255); `/mounted` endpoints all correct |
-| VULN-4 | ee0808f |
+| VULN-1 | 4167433 | fragment flood PoC: 32.8 MB sent, RSS unchanged (9688 kB), connection closed 1009 |
+| VULN-2 | 402eb29 | `-c` startup log shows "credential: configured" only |
+| VULN-3 | 8dd86a5 | 200-char `-b` rejected ("too long, max 120 chars", exit 255); `/mounted` endpoints all correct |
+| VULN-4 | b37fddb |
 | upstream #1566 (h2 :authority fallback in legacy origin check) | (this commit) | legacy http/1.1 probes unchanged: same-origin accepted, mismatch/missing rejected | ws probes: /ws and /ws?arg= accepted; /, /w, /wsfoo rejected |
-| VULN-15 | 43a4b36 | allowlisted origins accepted (raw ws + real browser); hostile/empty origins rejected |
-| VULN-5, VULN-6 | 20487ab | correct/wrong basic auth 200/401 via HTTP; ws token auth accepts valid, closes invalid; log shows "invalid AuthToken" without echoing it |
-| VULN-7 | 959ece5 | 5KB command: initial messages clamped to 4116 bytes total, no over-read |
-| VULN-8 | 52eb4b9 | /token body and Content-Length consistent (13 bytes, 200) |
-| VULN-9 | 780b507 | 300-char credential rejected with a clear error; normal credential auth still works |
-| VULN-10, VULN-11 | d357560 | signal forms KILL/SIGKILL/9/15 accepted; short invalid values rejected without OOB |
-| VULN-12, VULN-17 | 2e004a6 | streaming works; PAUSE stalls output (0 bytes); RESUME flushes backlog with the queued data |
-| VULN-16 | 212f8e4 | build clean; spawn/stream/pause/resume probe still PASS |
-| VULN-13, VULN-18 | 721531c | streaming/pause/resume probe PASS (resize still effective, absurd sizes ignored) | build + existing functional tests (origin check, auth flow, e2e) |
+| VULN-15 | 1c5731c | allowlisted origins accepted (raw ws + real browser); hostile/empty origins rejected |
+| VULN-5, VULN-6 | 57d7bf2 | correct/wrong basic auth 200/401 via HTTP; ws token auth accepts valid, closes invalid; log shows "invalid AuthToken" without echoing it |
+| VULN-7 | e311789 | 5KB command: initial messages clamped to 4116 bytes total, no over-read |
+| VULN-8 | 5a8cdb0 | /token body and Content-Length consistent (13 bytes, 200) |
+| VULN-9 | b6af70e | 300-char credential rejected with a clear error; normal credential auth still works |
+| VULN-10, VULN-11 | 8232197 | signal forms KILL/SIGKILL/9/15 accepted; short invalid values rejected without OOB |
+| VULN-12, VULN-17 | d955e43 | streaming works; PAUSE stalls output (0 bytes); RESUME flushes backlog with the queued data |
+| VULN-16 | e8c7160 | build clean; spawn/stream/pause/resume probe still PASS |
+| VULN-13, VULN-18 | cbf9e16 | streaming/pause/resume probe PASS (resize still effective, absurd sizes ignored) | build + existing functional tests (origin check, auth flow, e2e) |
