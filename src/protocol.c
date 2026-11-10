@@ -29,7 +29,10 @@ static int send_initial_message(struct lws *wsi, int index) {
   char cmd = initial_cmds[index];
   switch (cmd) {
     case SET_WINDOW_TITLE:
+      // VULN-7 (security audit): POSIX does not guarantee gethostname
+      // NUL-terminates when the name fills the buffer.
       gethostname(buffer, sizeof(buffer) - 1);
+      buffer[sizeof(buffer) - 1] = '\0';
       n = snprintf((char *)p, 1 + 4096, "%c%s (%s)", cmd, server->command, buffer);
       break;
     case SET_PREFERENCES:
@@ -38,6 +41,12 @@ static int send_initial_message(struct lws *wsi, int index) {
     default:
       break;
   }
+
+  // VULN-7 (security audit): snprintf returns the length it would have
+  // written; clamp to the bytes actually present or lws_write reads past
+  // the buffer (stack disclosure to the client).
+  if (n < 0) return -1;
+  if (n > 4096) n = 4096;
 
   return lws_write(wsi, p, (size_t)n, LWS_WRITE_BINARY);
 }

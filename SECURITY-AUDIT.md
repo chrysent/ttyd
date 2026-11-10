@@ -16,7 +16,7 @@
 | VULN-4 | Low | remote (defense-in-depth) | WS endpoint path check accepts any prefix of `/ws` (`/`, `/w`) | OPEN |
 | VULN-5 | Low | remote (auth timing) | Credential compared with `strcmp` (not constant-time) in HTTP and WS auth | FIXED |
 | VULN-6 | Low | remote, unauthenticated | Failed WS auth logs the attacker-supplied token verbatim (log forging, log flooding) | FIXED |
-| VULN-7 | Low | local config | `snprintf` return value used as write length in initial messages (`lws_write` OOB read) | OPEN |
+| VULN-7 | Low | local config | `snprintf` return value used as write length in initial messages (`lws_write` OOB read) | FIXED |
 | VULN-8 | Low | local config | `/token` response content-length uses `snprintf` return (truncation → mismatch) | OPEN |
 | VULN-9 | Low | local config | `-c` credential longer than the base64 buffer: unchecked `lws_b64_encode_string` → `strdup` of uninitialized stack | OPEN |
 | VULN-10 | Low | local config | `get_sig()` reads `sig_name + 3` out of bounds for short `-s` values | OPEN |
@@ -72,7 +72,7 @@ Severity reflects worst-case impact × reachability under the threat model above
 
 **Fix**: log the failure without echoing the token.
 
-### VULN-7 — `lws_write` length from `snprintf` return; unterminated hostname (Low, local config) — OPEN
+### VULN-7 — `lws_write` length from `snprintf` return; unterminated hostname (Low, local config) — FIXED
 
 `send_initial_message()` (protocol.c): `n = snprintf(p, 1 + 4096, …)`; `snprintf` returns the length it *would* have written, so an overlong command/hostname makes `n` exceed the buffer and `lws_write` reads past `message[]` (stack info leak / UB). Also `gethostname()` may leave `buffer` unterminated (POSIX).
 
@@ -165,4 +165,5 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | VULN-4 | (pending) | ws probe: only exact endpoint path accepted |
 | VULN-15 | (this commit) | allowlisted origins accepted (raw ws + real browser); hostile/empty origins rejected |
 | VULN-5, VULN-6 | (this commit) | correct/wrong basic auth 200/401 via HTTP; ws token auth accepts valid, closes invalid; log shows "invalid AuthToken" without echoing it |
-| VULN-7..13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |
+| VULN-7 | (this commit) | 5KB command: initial messages clamped to 4116 bytes total, no over-read |
+| VULN-8..13 | (pending) | build + existing functional tests (origin check, auth flow, e2e) |
