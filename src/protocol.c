@@ -271,7 +271,10 @@ int callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, 
 #if defined(LWS_ROLE_H2)
       if (n <= 0) n = lws_hdr_copy(wsi, pss->path, sizeof(pss->path), WSI_TOKEN_HTTP_COLON_PATH);
 #endif
-      if (strncmp(pss->path, endpoints.ws, n) != 0) {
+      // VULN-4 (security audit): exact match; the old strncmp bounded by the
+      // received path length accepted any prefix of the ws endpoint path
+      // (including "/" and "/w").
+      if (strcmp(pss->path, endpoints.ws) != 0) {
         lwsl_warn("refuse to serve WS client for illegal ws path: %s\n", pss->path);
         return 1;
       }

@@ -13,7 +13,7 @@
 | VULN-1 | High | remote, unauthenticated | Unbounded websocket message accumulation → memory-exhaustion DoS | FIXED |
 | VULN-2 | Medium | local (logs) | Basic-auth credential (equivalent to plaintext password) written to startup log | FIXED |
 | VULN-3 | Medium | local config (stack corruption) | `-b/--base-path` overlong value: unterminated stack buffer + negative-size `strncpy` | FIXED |
-| VULN-4 | Low | remote (defense-in-depth) | WS endpoint path check accepts any prefix of `/ws` (`/`, `/w`) | OPEN |
+| VULN-4 | Low | remote (defense-in-depth) | WS endpoint path check accepts any prefix of `/ws` (`/`, `/w`) | FIXED |
 | VULN-5 | Low | remote (auth timing) | Credential compared with `strcmp` (not constant-time) in HTTP and WS auth | FIXED |
 | VULN-6 | Low | remote, unauthenticated | Failed WS auth logs the attacker-supplied token verbatim (log forging, log flooding) | FIXED |
 | VULN-7 | Low | local config | `snprintf` return value used as write length in initial messages (`lws_write` OOB read) | FIXED |
@@ -50,7 +50,7 @@ Severity reflects worst-case impact × reachability under the threat model above
 
 **Fix**: reject overlong base-paths with an error (the help text already documents "max length: 128"), use bounded copies with explicit termination.
 
-### VULN-4 — WS path check accepts prefixes of `/ws` (Low, remote; defense-in-depth) — OPEN
+### VULN-4 — WS path check accepts prefixes of `/ws` (Low, remote; defense-in-depth) — FIXED
 
 > Second-pass note: the independent reviewer classifies this as cosmetic because lws binds the connection to the `tty` protocol by `Sec-WebSocket-Protocol`, not by path, and all accepted paths share identical authentication — there is no path-differentiated behavior to bypass. Kept as a low-severity defense-in-depth fix: exact matching is the evident intent of the check and removes path-confusion ambiguity behind reverse proxies.
 
@@ -162,7 +162,7 @@ Found by the independent second-pass review. `(uint16_t)json_object_get_int(...)
 | VULN-1 | (this commit) | fragment flood PoC: 32.8 MB sent, RSS unchanged (9688 kB), connection closed 1009 |
 | VULN-2 | (this commit) | `-c` startup log shows "credential: configured" only |
 | VULN-3 | (this commit) | 200-char `-b` rejected ("too long, max 120 chars", exit 255); `/mounted` endpoints all correct |
-| VULN-4 | (pending) | ws probe: only exact endpoint path accepted |
+| VULN-4 | (this commit) | ws probes: /ws and /ws?arg= accepted; /, /w, /wsfoo rejected |
 | VULN-15 | (this commit) | allowlisted origins accepted (raw ws + real browser); hostile/empty origins rejected |
 | VULN-5, VULN-6 | (this commit) | correct/wrong basic auth 200/401 via HTTP; ws token auth accepts valid, closes invalid; log shows "invalid AuthToken" without echoing it |
 | VULN-7 | (this commit) | 5KB command: initial messages clamped to 4116 bytes total, no over-read |
